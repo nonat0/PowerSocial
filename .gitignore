@@ -26,5 +26,7 @@ dist-ssr
 # Rust / Tauri build output
 src-tauri/target/
 
-# Sidecar binaries (yt-dlp/ffmpeg) — grandes demais para o git; ver README
-src-tauri/binaries/
+# Notas internas de desenvolvimento (caminhos locais) — fora do repo público
+CONTEXT.md
+
+# Sidecars (yt-dlp/ffmpeg) são versionados via Git LFS (ver .gitattributes)

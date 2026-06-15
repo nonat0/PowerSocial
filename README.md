@@ -33,17 +33,22 @@ npm run tauri dev
 
 ### Binários sidecar (yt-dlp / ffmpeg)
 
-Os executáveis do `yt-dlp` e do `ffmpeg` **não** estão no repositório (o ffmpeg
-passa de 100 MB, limite do GitHub). Antes de buildar, coloque-os em
-`src-tauri/binaries/` com o sufixo de target:
+Os executáveis do `yt-dlp` e do `ffmpeg` ficam em `src-tauri/binaries/` e são
+versionados via **Git LFS** (o ffmpeg passa de 100 MB). Em outro PC, basta ter o
+[Git LFS](https://git-lfs.com/) instalado — ao clonar, os binários vêm junto:
 
+```bash
+git lfs install
+git clone https://github.com/nonat0/PowerSocial.git
 ```
-src-tauri/binaries/yt-dlp-x86_64-pc-windows-msvc.exe
-src-tauri/binaries/ffmpeg-x86_64-pc-windows-msvc.exe
+
+Se os binários vierem como "ponteiros" (Git LFS não estava instalado no clone):
+
+```bash
+git lfs pull
 ```
 
 O resolvedor procura nesta ordem: pasta do executável (sidecar) → PATH → winget.
-Em dev, se você já tiver `yt-dlp` e `ffmpeg` no PATH, o app os encontra.
 
 ## Build
 

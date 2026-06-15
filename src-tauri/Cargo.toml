@@ -28,3 +28,11 @@ chrono = { version = "0.4", features = ["serde"] }
 base64 = "0.22"
 open = "5"
 
+# Mantém o target/debug enxuto: pouca info de debug no nosso crate e
+# nenhuma nas dependências (elas raramente são depuradas).
+[profile.dev]
+debug = 1
+
+[profile.dev.package."*"]
+debug = false
+
