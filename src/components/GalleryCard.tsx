@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   FolderOpen,
+  Globe,
   MoreVertical,
   Pencil,
   Play,
@@ -12,6 +13,7 @@ import {
 import type { HistoryItem } from "../types";
 import {
   openFile,
+  openUrl,
   readImageBase64,
   removeHistoryItem,
   revealInFolder,
@@ -201,7 +203,12 @@ export function GalleryCard({
                 <MoreVertical />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuContent align="end" className="w-48">
+              {item.url && (
+                <DropdownMenuItem onClick={() => openUrl(item.url).catch(() => {})}>
+                  <Globe /> Abrir na web
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={handleReveal}>
                 <FolderOpen /> Mostrar na pasta
               </DropdownMenuItem>

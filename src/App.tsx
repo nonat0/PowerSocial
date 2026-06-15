@@ -5,6 +5,7 @@ import {
   Download,
   Folder,
   FolderInput,
+  Globe,
   KeyRound,
   Loader2,
   Scissors,
@@ -33,6 +34,7 @@ import {
   loadCancelled,
   loadHistory,
   openFile,
+  openUrl,
   pauseDownload,
   pickFile,
   pickFolder,
@@ -171,6 +173,10 @@ function App() {
       onError: (id, message) => updateJob(id, { status: "error", message }),
       onCancelled: (id) => updateJob(id, { status: "cancelled" }),
       onPaused: (id) => updateJob(id, { status: "paused" }),
+      onItemUrl: (id, url) =>
+        setHistory((prev) =>
+          prev.map((i) => (i.id === id ? { ...i, url } : i))
+        ),
     });
 
     return () => {
@@ -504,9 +510,16 @@ function App() {
     return list.filter((i) => matchesSearch(i) && matchesFilter(i));
   }
 
-  // Fonte ativa só para contar no strip de filtros (galeria/baixados = histórico).
+  // "Baixados" = só o que veio da web (exclui importados/cortes locais).
+  const downloadsHistory = history.filter((i) => i.platform !== "Local");
+
+  // Fonte ativa só para contar no strip de filtros.
   const filterSource: Array<{ platform: string; favorite?: boolean; title: string }> =
-    view === "downloads" && downloadsTab === "cancelados" ? cancelled : history;
+    view === "galeria"
+      ? history
+      : downloadsTab === "cancelados"
+      ? cancelled
+      : downloadsHistory;
   const sourceSearched = filterSource.filter(matchesSearch);
   const countFor = (p: string) => countInFilter(sourceSearched, p);
 
@@ -536,7 +549,12 @@ function App() {
   }
 
   const filteredHistory = sortItems(applyFilters(history));
+  const filteredDownloads = sortItems(applyFilters(downloadsHistory));
   const filteredCancelled = sortItems(applyFilters(cancelled));
+  const downloadsTotalBytes = filteredDownloads.reduce(
+    (s, i) => s + (i.filesize || 0),
+    0
+  );
 
   const selectedBytes = info
     ? info.entries.reduce(
@@ -569,6 +587,16 @@ function App() {
                 Salvando em
               </span>
               <div className="flex items-center gap-2">
+                <Button
+                  variant={view === "downloads" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() =>
+                    setView((v) => (v === "downloads" ? "galeria" : "downloads"))
+                  }
+                  title="Ver downloads (baixados e cancelados)"
+                >
+                  <Download /> Downloads
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -894,31 +922,25 @@ function App() {
             onDismiss={dismissJob}
           />
 
-          {/* Nav: Galeria (grade) x Downloads (listas baixados/cancelados) */}
+          {/* Cabeçalho da área (Galeria ou Downloads) + ordenação/busca */}
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex gap-1 rounded-lg border bg-card p-1">
-              {(
-                [
-                  ["galeria", "Galeria", history.length],
-                  ["downloads", "Downloads", history.length + cancelled.length],
-                ] as const
-              ).map(([v, label, count]) => (
-                <Button
-                  key={v}
-                  size="sm"
-                  variant={view === v ? "default" : "ghost"}
-                  onClick={() => setView(v)}
-                >
-                  {label}
-                  <Badge
-                    variant={view === v ? "secondary" : "outline"}
-                    className="ml-1 px-1.5 tabular-nums"
-                  >
-                    {count}
-                  </Badge>
-                </Button>
-              ))}
-            </div>
+            <h2 className="text-lg font-semibold">
+              {view === "galeria" ? (
+                <>
+                  Galeria{" "}
+                  <span className="font-normal text-muted-foreground">
+                    ({filteredHistory.length})
+                  </span>
+                </>
+              ) : (
+                <>
+                  Downloads{" "}
+                  <span className="font-normal text-muted-foreground">
+                    ({downloadsHistory.length} · {formatBytes(downloadsTotalBytes)})
+                  </span>
+                </>
+              )}
+            </h2>
             <div className="flex items-center gap-2">
               <Select
                 value={sortBy}
@@ -1017,7 +1039,7 @@ function App() {
                 <div className="flex gap-1 rounded-lg border bg-card p-1">
                   {(
                     [
-                      ["baixados", "Baixados", history.length],
+                      ["baixados", "Baixados", downloadsHistory.length],
                       ["cancelados", "Cancelados", cancelled.length],
                     ] as const
                   ).map(([tab, label, count]) => (
@@ -1052,15 +1074,15 @@ function App() {
               </div>
 
               {downloadsTab === "baixados" ? (
-                history.length === 0 ? (
+                downloadsHistory.length === 0 ? (
                   <EmptyState icon="📥" title="Nenhum download ainda." />
-                ) : filteredHistory.length === 0 ? (
+                ) : filteredDownloads.length === 0 ? (
                   <EmptyState
                     title={`Nenhum baixado para “${platformFilter}”.`}
                   />
                 ) : (
                   <div className="flex flex-col gap-2">
-                    {filteredHistory.map((item) => (
+                    {filteredDownloads.map((item) => (
                       <Card
                         key={item.id}
                         className="flex-row items-center gap-3 px-4 py-3"
@@ -1075,6 +1097,16 @@ function App() {
                             {formatDate(item.date)}
                           </p>
                         </div>
+                        {item.url && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            title="Abrir na web"
+                            onClick={() => openUrl(item.url).catch(() => {})}
+                          >
+                            <Globe />
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="secondary"

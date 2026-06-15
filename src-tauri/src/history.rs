@@ -107,6 +107,20 @@ pub fn add_item(app: &AppHandle, item: HistoryItem) -> Result<(), String> {
     save_history(app, &items)
 }
 
+/// Atualiza o link (url) de um item pelo caminho do arquivo. Devolve o id se achou.
+pub fn set_url_by_path(app: &AppHandle, path: &str, url: &str) -> Option<String> {
+    let mut items = load_history(app).ok()?;
+    let key = path.to_lowercase();
+    let pos = items.iter().position(|i| i.filepath.to_lowercase() == key)?;
+    if items[pos].url == url {
+        return Some(items[pos].id.clone());
+    }
+    items[pos].url = url.to_string();
+    let id = items[pos].id.clone();
+    let _ = save_history(app, &items);
+    Some(id)
+}
+
 /// Marca/desmarca um item como favorito.
 pub fn set_favorite(app: &AppHandle, id: &str, favorite: bool) -> Result<(), String> {
     let mut items = load_history(app)?;

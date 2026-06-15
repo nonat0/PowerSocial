@@ -596,6 +596,12 @@ struct ItemEvent {
 }
 
 #[derive(Clone, Serialize)]
+struct ItemUrlEvent {
+    id: String,
+    url: String,
+}
+
+#[derive(Clone, Serialize)]
 struct DoneEvent {
     id: String,
     count: usize,
@@ -807,7 +813,8 @@ async fn run_download(
     .to_string();
 
     let progress_template = "[PROG]%(progress.status)s|%(progress._percent_str)s|%(progress.downloaded_bytes)s|%(progress.total_bytes)s|%(progress.total_bytes_estimate)s|%(progress.speed)s|%(progress.eta)s";
-    let print_template = "after_move:[DONE]%(title)s\t%(filepath)s";
+    // Captura o link individual de cada vídeo (em playlists, difere da URL pedida).
+    let print_template = "after_move:[URL]%(filepath)s\t%(webpage_url,original_url)s";
 
     let mut args: Vec<String> = Vec::new();
     args.extend(format_args(&request.quality));
@@ -967,7 +974,21 @@ async fn run_download(
         let mut errors = String::new();
         let mut reader = BufReader::new(stdout).lines();
         while let Ok(Some(line)) = reader.next_line().await {
-            if let Some(ev) = parse_progress(&line, &request.id) {
+            if let Some(idx) = line.find("[URL]") {
+                // Link individual do vídeo (atualiza o item já criado pelo polling).
+                let rest = &line[idx + "[URL]".len()..];
+                let mut parts = rest.splitn(2, '\t');
+                let path = parts.next().unwrap_or("").trim().to_string();
+                let vurl = parts.next().unwrap_or("").trim().to_string();
+                if !path.is_empty() && !vurl.is_empty() && vurl != "NA" {
+                    if let Some(id) = history::set_url_by_path(app, &path, &vurl) {
+                        let _ = app.emit(
+                            "download-item-url",
+                            ItemUrlEvent { id, url: vurl },
+                        );
+                    }
+                }
+            } else if let Some(ev) = parse_progress(&line, &request.id) {
                 let _ = app.emit("download-progress", ev);
             } else if line.to_lowercase().contains("error") {
                 errors.push_str(line.trim());
@@ -1255,6 +1276,16 @@ pub fn open_path(path: String) -> Result<(), String> {
     open::that_detached(&path).map_err(|e| format!("Não foi possível abrir o arquivo: {e}"))
 }
 
+/// Abre um link (URL) no navegador padrão.
+#[tauri::command]
+pub fn open_url(url: String) -> Result<(), String> {
+    let u = url.trim();
+    if u.is_empty() {
+        return Err("Sem link para abrir.".into());
+    }
+    open::that_detached(u).map_err(|e| format!("Não foi possível abrir o link: {e}"))
+}
+
 /// Abre a pasta do arquivo, selecionando-o quando possivel.
 #[tauri::command]
 pub fn reveal_path(path: String) -> Result<(), String> {
@@ -1264,8 +1295,13 @@ pub fn reveal_path(path: String) -> Result<(), String> {
     }
     #[cfg(target_os = "windows")]
     {
+        use std::os::windows::process::CommandExt;
+        // O explorer exige `/select,"caminho"` com SÓ o caminho entre aspas e
+        // barras invertidas. `raw_arg` evita que o Rust cite o argumento inteiro
+        // (o que faria o explorer abrir a pasta padrão em vez de selecionar).
+        let win = path.replace('/', "\\");
         let mut cmd = std::process::Command::new("explorer");
-        cmd.arg(format!("/select,{}", path));
+        cmd.raw_arg(format!("/select,\"{win}\""));
         hide_console_std(&mut cmd);
         // O explorer retorna codigo != 0 mesmo quando abre; basta disparar.
         cmd.spawn()

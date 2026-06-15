@@ -5,6 +5,7 @@ const LOGOS: Record<string, string> = {
   Instagram: "/instagram.ico",
   Facebook: "/facebook.ico",
   X: "/x.ico",
+  Local: "/creator-gallery.png",
 };
 
 /** Logo original da rede social (arquivos .ico em public/). */

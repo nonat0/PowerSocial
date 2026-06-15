@@ -85,6 +85,7 @@ pub fn run() {
             downloader::fetch_playlist_sizes,
             downloader::cancel_playlist_sizes,
             downloader::open_path,
+            downloader::open_url,
             downloader::reveal_path,
             downloader::read_image_base64,
             load_history,

@@ -224,6 +224,11 @@ export function openFile(path: string): Promise<void> {
   return invoke("open_path", { path });
 }
 
+/** Abre um link (URL) no navegador padrão. */
+export function openUrl(url: string): Promise<void> {
+  return invoke("open_url", { url });
+}
+
 export function revealInFolder(path: string): Promise<void> {
   return invoke("reveal_path", { path });
 }
@@ -247,6 +252,7 @@ export interface DownloadEventHandlers {
   onCancelled: (id: string) => void;
   onPaused: (id: string) => void;
   onStats: (id: string, completed: number, downloaded: number) => void;
+  onItemUrl: (id: string, url: string) => void;
 }
 
 /** Assina todos os eventos de download; devolve uma função para cancelar a assinatura. */
@@ -272,6 +278,9 @@ export async function subscribeDownloadEvents(
     listen<{ id: string; completed: number; downloaded: number }>(
       "download-stats",
       (e) => h.onStats(e.payload.id, e.payload.completed, e.payload.downloaded)
+    ),
+    listen<{ id: string; url: string }>("download-item-url", (e) =>
+      h.onItemUrl(e.payload.id, e.payload.url)
     ),
   ]);
   return () => unlisteners.forEach((un) => un());
